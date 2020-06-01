@@ -2,9 +2,12 @@ import { UpdateUserDTO } from './dto/updateUser.dto';
 import { CreateUserDTO } from './dto/createUser.dto';
 import { UserService } from './user.service';
 import { User } from './user.entity';
-import { Controller, Get, Post, Body, Patch, Param, ParseIntPipe, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, ParseIntPipe, Delete, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from './get-user.decorator';
 
 @Controller('users')
+@UseGuards(AuthGuard())
 export class UserController {
 
     constructor(private userService: UserService) {
@@ -33,5 +36,10 @@ export class UserController {
     @Delete(':id')
     async deleteUser(@Param('id', ParseIntPipe) id): Promise<void> {
         await this.userService.deleteOne(id);
+    }
+
+    @Post('/test')
+    test(@GetUser() user: User) {
+        console.log(user)
     }
 }
