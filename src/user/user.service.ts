@@ -1,3 +1,4 @@
+import { JwtPayLoadInterface } from '../auth/jwt-payload.interface';
 import { AuthDTO } from './../auth/dto/auth.dto';
 import { UpdateUserDTO } from './dto/updateUser.dto';
 import { CreateUserDTO } from './dto/createUser.dto';
@@ -5,12 +6,13 @@ import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
 import { UserRepository } from './user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, UnauthorizedException, HttpStatus, Response, HttpCode } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
 
-    constructor(@InjectRepository(UserRepository) private userRepository: UserRepository) {
+    constructor(@InjectRepository(UserRepository) private userRepository: UserRepository, private jwtService: JwtService) {
     }
 
     async getAllUser(): Promise<User[]> {
@@ -81,21 +83,27 @@ export class UserService {
         }
     }
 
-    async login(authDto: AuthDTO): Promise<{}> {
+    async login(authDto: AuthDTO): Promise<{ accessToken: string }> {
         const { username, password } = authDto;
 
         const found = await this.userRepository.findOne({ username })
 
         if (found) {
             const result = await found.validatePassword(password)
+            const payload: JwtPayLoadInterface = { username: found.username, fullName: found.fullName, age: found.age }
+            const accessToken: string = await this.jwtService.sign(payload);
+            found.accessToken = accessToken;
+            const user = await found.save()
             if (result) {
-                delete found.password;
-                delete found.salt;
-                delete found.id;                
-                return found;
+                delete user.password;
+                delete user.salt;
+                delete user.id;
+                return user;
             } else {
                 throw new UnauthorizedException('Login Failure!')
             }
+        } else {
+            throw new UnauthorizedException('Login Failure!')
         }
     }
 }
